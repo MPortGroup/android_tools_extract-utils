@@ -1181,6 +1181,17 @@ function get_file() {
         # try to pull
         adb pull "$1" "$2" >/dev/null 2>&1 && return 0
 
+        # try to use su command
+        su_available="$(adb shell su -c 'id' | grep "root")"
+        if [ -n "$su_available" ]; then
+            hashed_filename="$(echo ${1} | sha1sum)" || return 1
+            hashed_filename="${hashed_filename%%\ *}" || return 1
+            adb shell su -c "cp \"${1}\" \"/sdcard/${hashed_filename}\"" || return 1
+            adb pull "/sdcard/${hashed_filename}" "$2" > /dev/null 2>&1 || return 1
+            adb shell su -c "rm \"/sdcard/${hashed_filename}\"" || return 1
+            return 0
+        fi
+
         return 1
     else
         # try to copy
